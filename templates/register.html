@@ -9,7 +9,15 @@
 </head>
 <body>
     <h1>Register</h1>
-    <form action="#" method="POST">
+    <form action="{% url 'register' %}" method="POST">
+        {% csrf_token %}
+        
+        {% if msg %}
+        <div style="color: red;">
+            {{msg}}
+        </div>
+        {% endif %}
+        
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required>
         <br>
