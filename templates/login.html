@@ -34,5 +34,12 @@
     <a href="{% url 'logout' %}">Click here to logout.</a>
     {% endif %}
 
+    <h2>The Users are:</h2>
+    {% if users %}
+    {% for user in users %}
+    <p>{{user}}, Id: {{user.id}}</p> 
+    {% endfor %}
+    {% endif %}
+
 </body>
 </html>

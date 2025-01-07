@@ -20,7 +20,9 @@ def home_view(request):
             return render(request, 'login.html', {'msg': msg})
     else:
         print("FORM IS NOT SUBMITTED")
-    return render(request, 'login.html')
+        users = User.objects.all()
+        print(f"The users are: {users}")
+    return render(request, 'login.html', {'users': users})
 
 
 def register_view(request):
@@ -40,8 +42,9 @@ def register_view(request):
             msg = "User with that username already exists."
             return render(request, 'register.html', {'msg': msg})
         
-        User.objects.create_user(username=username, email=email, password=password)
+        user = User.objects.create_user(username=username, email=email, password=password)
         print("New user created.")
+        print(f"And the id is: {user.id}")
         return redirect('home')
     
     return render(request, 'register.html')
