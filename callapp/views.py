@@ -2,6 +2,8 @@ from django.shortcuts import render, HttpResponse, redirect
 from django.contrib.auth import authenticate, login, logout
 from .models import User
 
+#online_users = []
+
 def home_view(request):
     if request.method == "POST":
 
@@ -14,15 +16,24 @@ def home_view(request):
             login(request, user)
             print("LOGGED In")
             msg = "You're currently Logged in."
-            return render(request, 'login.html', {'loginMsg': msg})
+            users = User.objects.all()
+            #print(f"The users are: {users}")
+            #global online_users
+            #online_users.append(user.id)
+            #print(f"THE ID OF THIS USER IS: {online_users}")
+            #print(f"TOTAL ONLINE USERS: {online_users}")
+            context = {
+                'loginMsg': msg,
+                'users': users
+            }
+            return render(request, 'homepage.html', context)
         else:
             msg = "Invalid username and password."
             return render(request, 'login.html', {'msg': msg})
     else:
         print("FORM IS NOT SUBMITTED")
-        users = User.objects.all()
-        print(f"The users are: {users}")
-    return render(request, 'login.html', {'users': users})
+        return render(request, 'login.html')
+
 
 
 def register_view(request):
@@ -50,7 +61,10 @@ def register_view(request):
     return render(request, 'register.html')
 
 
+'''
+this function will get executed when user clicks on logut. Here we take reqeust as parameter, and we pass it to logout() from django.contrib.auth
+'''
 def logout_view(request):
     logout(request)
-    print("Logged out.")
+    print("LOGGING OUT User")
     return redirect('home')

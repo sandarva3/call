@@ -1,0 +1,32 @@
+<!-- login.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+</head>
+<body>
+    <h2>The Users are:</h2>
+
+    {% if users %}
+    {% for user in users %}
+    <p>{{user}}, Id: {{user.id}}, <a href="">Call</a> </p>
+    {% if user.is_authenticated %}
+    <p>(Online)</p>
+    {% else %}
+    <p>(Offline)</p>
+    {% endif %}
+    {% endfor %}
+    {% endif %}
+
+    {% if loginMsg %}
+    <h2 style="color: darkgreen;">
+        {{loginMsg}}
+    </h2>
+    <br>
+    <a href="{% url 'logout' %}">Click here to logout.</a>
+    {% endif %}
+
+</body>
+</html>

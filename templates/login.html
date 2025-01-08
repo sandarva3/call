@@ -26,20 +26,5 @@
     </form>
     <p>Don't have an account? <a href="{% url 'register' %}">Register here</a></p>
 
-    {% if loginMsg %}
-    <h2 style="color: darkgreen;">
-        {{loginMsg}}
-    </h2>
-    <br>
-    <a href="{% url 'logout' %}">Click here to logout.</a>
-    {% endif %}
-
-    <h2>The Users are:</h2>
-    {% if users %}
-    {% for user in users %}
-    <p>{{user}}, Id: {{user.id}}</p> 
-    {% endfor %}
-    {% endif %}
-
 </body>
 </html>
