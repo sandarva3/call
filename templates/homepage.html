@@ -11,26 +11,17 @@
 
     {% if users %}
     {% for user in users %}
-    <p>{{user}}, Id: {{user.id}}, <a href="">Call</a> </p>
-    {% if user.is_authenticated %}
-    <p>(Online)</p>
-    {% else %}
-    <p>(Offline)</p>
-    {% endif %}
+        {% if user != request.user %}
+            <p>
+                {{ user.username }}, Id: {{ user.id }}
+                <button onclick="startCall({{ user.id }})">Call</button>
+            </p>
+        {% endif %}
     {% endfor %}
     {% endif %}
 
-    {% if loginMsg %}
-    <h2 style="color: darkgreen;">
-        {{loginMsg}}
-    </h2>
-    <br>
-    <a href="{% url 'logout' %}">Click here to logout.</a>
-    {% endif %}
-
-
-    <p id="signalingServer">{% url 'signalingServer' %}</p>
-    <p id="startCall">{% url 'startCall' %}</p>
+    <h2>Call Status:</h2>
+    <div id="call-status"></div>
 
     <script>
         /*
@@ -47,13 +38,13 @@ We enable eventListener on peerConnection to listen for ICE candidates event, af
 
 */
 //    let signalingServer2 = document.getElementById('signalingServer').textContent;
-    let signalingServer = "{% url 'signalingServer' %}";
+    let signalingServer = "/signaling/";
 //    let startCall2 = document.getElementById('startCall').textContent;
-    let startCall = "{% url 'startCall' %}";
+    //let startCall = "{% url 'startCall' 2 %}";
     let localStream;
     let peerConnection;
 
-    async function starCall(calleID){
+    async function startCall(calleID){
         localStream = await navigator.mediaDevices.getUserMedia({audio: true});
         peerConnection = new RTCPeerConnection();
         localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
@@ -82,7 +73,7 @@ We enable eventListener on peerConnection to listen for ICE candidates event, af
         // establish connection. 
         await peerConnection.setLocalDescription(offer);
 
-        fetch(startCall,
+        fetch(`/startCall/${calleID}`,
             {
                 method: 'POST',
                 headers:{
@@ -127,7 +118,7 @@ We enable eventListener on peerConnection to listen for ICE candidates event, af
             });
         }
         
-        if(iceeCandidate){
+        if(iceCandidate){
             // probably RTCIceCandidate() also converts the raw ice candidate details sent by server in json format to proper webRTC format.
             peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidate));
         }
