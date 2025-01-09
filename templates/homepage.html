@@ -28,5 +28,68 @@
     <a href="{% url 'logout' %}">Click here to logout.</a>
     {% endif %}
 
+
+    <script>
+        /*
+a Function to start a call: {
+create two variables: localStream, peerConnection. create an async function(async because we need to use await there).
+Now, we use navigator(kind of control panel of browser).mediaDevices(a component of webRTC embedded in browser).getUserMedia(For accesing the media input stream, 
+    like video or audio).
+Then we create a RTCPeerConnection(), which is cruicial, because it represents one of the end for the communication.
+Each audio track is a audio stream from one device(like microphone), it's part of mediaStream, which captures multiple tracks from multiple devices. Each audio track
+    can be manipulated through code like its volume level plus many other things.
+Then we get all tracks(audio and/or video) from  localStream, and we add each track to our peerConnection().
+We enable eventListener on peerConnection to listen for ICE candidates event, after it's made we send it to signaling server.
+    }
+
+*/
+    let localStream;
+    let peerConnection;
+
+    async function starCall(calleID){
+        localStream = await navigator.mediaDevices.getUserMedia({audio: true});
+        peerConnection = new RTCPeerConnection();
+        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+        //Handling ice candidates
+        peerConnection.onicecandidate = (event) => {
+            if(event.candidate){
+                fetch('signaling server',
+                {
+                    method:'POST',
+                    headers:{
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        iceCandidate: event.candidate,
+                        calleID: calleID
+                    }),
+                },
+                );
+            }
+        };
+
+        //create SDP offer
+        const offer = await peerConnection.createOffer();
+        // we pass offer to setLocalDescription() and it sets a description about us in peer connection. It also automatically triggers the ice gathering process, to
+        // establish connection. 
+        await peerConnection.setLocalDescription(offer);
+
+        fetch('start the call',
+            {
+                method: 'POST',
+                headers:{
+                    'Content-Type': 'application/json'
+                },
+                body:JSON.stringify({
+                    sdp: offer,
+                })
+            }
+        ).then(response => response.json()).then(data => {
+            //Server don't send anything back here, this code just gets executed after we send the sdp offer, and we do soemthing like adding 'calling' status here.
+        })
+    }
+    </script>
+
 </body>
 </html>
