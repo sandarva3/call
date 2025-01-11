@@ -1,6 +1,6 @@
 from django.shortcuts import render, HttpResponse, redirect
 from django.contrib.auth import authenticate, login, logout
-from .models import User
+from .models import User, UserData
 from django.http import JsonResponse
 import json
 from django.views.decorators.csrf import csrf_exempt
