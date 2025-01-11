@@ -1,129 +1,185 @@
-<!-- login.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Page</title>
+    <title>Voice Call App</title>
 </head>
-<body>
-    <h2>The Users are:</h2>
 
+<body>
+    <h2>Online Users:</h2>
     {% if users %}
     {% for user in users %}
-        {% if user != request.user %}
-            <p>
-                {{ user.username }}, Id: {{ user.id }}
-                <button onclick="startCall({{ user.id }})">Call</button>
-            </p>
-        {% endif %}
+    {% if user != request.user %}
+    <p>
+        {{ user.username }}, Id: {{ user.id }}
+        <button onclick="startCall({{ user.id }})">Call</button>
+    </p>
+    {% endif %}
     {% endfor %}
     {% endif %}
 
     <h2>Call Status:</h2>
     <div id="call-status"></div>
+    <button id="end-call" style="display: none;" onclick="endCall()">End Call</button>
+
+
+
 
     <script>
-        /*
-a Function to start a call: {
-create two variables: localStream, peerConnection. create an async function(async because we need to use await there).
-Now, we use navigator(kind of control panel of browser).mediaDevices(a component of webRTC embedded in browser).getUserMedia(For accesing the media input stream, 
-    like video or audio).
-Then we create a RTCPeerConnection(), which is cruicial, because it represents one of the end for the communication.
-Each audio track is a audio stream from one device(like microphone), it's part of mediaStream, which captures multiple tracks from multiple devices. Each audio track
-    can be manipulated through code like its volume level plus many other things.
-Then we get all tracks(audio and/or video) from  localStream, and we add each track to our peerConnection().
-We enable eventListener on peerConnection to listen for ICE candidates event, after it's made we send it to signaling server.
-    }
+        const ws = new WebSocket('ws://' + window.location.host + '/ws/signaling/');
+        let localStream;
+        let peerConnection;
+        let currentCalleeId = null;
 
-*/
-//    let signalingServer2 = document.getElementById('signalingServer').textContent;
-    let signalingServer = "/signaling/";
-//    let startCall2 = document.getElementById('startCall').textContent;
-    //let startCall = "{% url 'startCall' 2 %}";
-    let localStream;
-    let peerConnection;
-
-    async function startCall(calleID){
-        localStream = await navigator.mediaDevices.getUserMedia({audio: true});
-        peerConnection = new RTCPeerConnection();
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        //Handling ice candidates
-        peerConnection.onicecandidate = (event) => {
-            if(event.candidate){
-                fetch(signalingServer,
-                {
-                    method:'POST',
-                    headers:{
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        iceCandidate: event.candidate,
-                        calleID: calleID
-                    }),
-                },
-                );
-            }
+        // Configure ICE servers
+        const configuration = {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' }
+            ]
         };
 
-        //create SDP offer
-        const offer = await peerConnection.createOffer();
-        // we pass offer to setLocalDescription() and it sets a description about us in peer connection. It also automatically triggers the ice gathering process, to
-        // establish connection. 
-        await peerConnection.setLocalDescription(offer);
 
-        fetch(`/startCall/${calleID}`,
-            {
-                method: 'POST',
-                headers:{
-                    'Content-Type': 'application/json'
-                },
-                body:JSON.stringify({
-                    sdp: offer,
-                })
+        ws.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+
+            if (data.sdp) {
+                await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+
+                if (data.sdp.type === 'offer') {
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+
+                    ws.send(JSON.stringify({
+                        sdp: offer,
+                        calleeID: calleeId,
+                        callerID: {{ request.user.id }},
+            }));
+        }
+    }
+
+        if (data.iceCandidate) {
+            try {
+                await peerConnection.addIceCandidate(new RTCIceCandidate(data.iceCandidate));
+            } catch (e) {
+                console.error('Error adding received ICE candidate:', e);
             }
-        ).then(response => response.json()).then(data => {
-            //Server don't send anything back here, this code just gets executed after we send the sdp offer, and we do soemthing like adding 'calling' status here.
-        })
-    }
-
-
-    async function receiveCall(data){
-        const {sdp, iceCandidate} = data;
-
-        if(sdp){
-            await peerConnection.setRemoteDescription(new RTCSessionDescription(sdp));
-            // RTCSessionDescription() takes raw connection details(from signaling server, because server sends that it in json fomart) and converts that to proper
-            // WebRTCSessionDescription() object.
-            // peerConnection.setRemoteDescription sets the endpoint of my peerConnection object to inform it the connection details about anoter peer, like they might
-            // do video/audio call in this format, using this codecs, etc.
-
-            //Create our own sdp, to send it back to another peer.
-            const answer = await peerConnection.createAnswer();
-            // When we initialize a call, we use setLocalDescription() to set an offer. But when receiving a call we use it to set and answer, like answering to the
-            // sdp of another peer, like here's what I can agree with, here's what accept to your connection details. 
-            await peerConnection.setLocalDescription(answer);
-
-            fetch(signalingServer,
-            {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    sdp: answer,
-                    calleID: data.calleID
-                }),
-            });
         }
-        
-        if(iceCandidate){
-            // probably RTCIceCandidate() also converts the raw ice candidate details sent by server in json format to proper webRTC format.
-            peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidate));
+};
+
+
+        async function startCall(calleeId) {
+            try {
+                document.getElementById('call-status').textContent = 'Getting microphone access...';
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                currentCalleeId = calleeId;
+
+                peerConnection = new RTCPeerConnection(configuration);
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                peerConnection.ontrack = (event) => {
+                    const remoteAudio = new Audio();
+                    remoteAudio.srcObject = event.streams[0];
+                    remoteAudio.play();
+                    document.getElementById('call-status').textContent = 'Connected - In Call';
+                };
+
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        ws.send(JSON.stringify({
+                            iceCandidate: event.candidate,
+                            calleeID: calleeId,
+                        }));
+                    }
+                };
+
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+
+                ws.send(JSON.stringify({
+                    sdp: offer,
+                    calleeID: calleeId,
+                    callerID: {{ request.user.id }},
+        }));
+
+
+        document.getElementById('call-status').textContent = 'Calling...';
+        document.getElementById('end-call').style.display = 'block';
+            } catch (error) {
+            console.error('Error in startCall:', error);
+            document.getElementById('call-status').textContent = 'Error: ' + error.message;
         }
-    }
+        }
+
+        async function receiveCall(data) {
+            try {
+                if (!peerConnection) {
+                    localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    peerConnection = new RTCPeerConnection(configuration);
+                    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                    peerConnection.ontrack = (event) => {
+                        const remoteAudio = new Audio();
+                        remoteAudio.srcObject = event.streams[0];
+                        remoteAudio.play();
+                        document.getElementById('call-status').textContent = 'Connected - In Call';
+                    };
+
+                    peerConnection.onicecandidate = (event) => {
+                        if (event.candidate) {
+                            ws.send(JSON.stringify({
+                                iceCandidate: event.candidate,
+                                calleeID: data.callerID,
+                            }));
+                        }
+                    };
+                }
+
+                if (data.sdp) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.sdp));
+
+                    if (data.sdp.type === 'offer') {
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+
+                        ws.send(JSON.stringify({
+                            sdp: answer,
+                            calleeID: data.callerID,
+                            callerID: {{ request.user.id }},
+                }));
+
+            }
+                }
+
+        if (data.iceCandidate) {
+            await peerConnection.addIceCandidate(new RTCIceCandidate(data.iceCandidate));
+        }
+
+        document.getElementById('end-call').style.display = 'block';
+            } catch (error) {
+            console.error('Error in receiveCall:', error);
+            document.getElementById('call-status').textContent = 'Error: ' + error.message;
+        }
+        }
+
+        function endCall() {
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            document.getElementById('call-status').textContent = 'Call Ended';
+            document.getElementById('end-call').style.display = 'none';
+            currentCalleeId = null;
+        }
     </script>
 
+
+
 </body>
+
 </html>

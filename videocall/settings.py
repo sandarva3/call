@@ -24,15 +24,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-@1s4$ofak-jg3iq0hz*wfogjb)x#j7x%%jl0a%tj2h@e0do)1i'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.147']
-
+#ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.147', '0.0.0.0']
+ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
     'callapp',
-
+    'daphne',
+    'channels',
     
     'django.contrib.admin',
     'django.contrib.auth',
@@ -126,3 +127,13 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'callapp.User'
+
+ASGI_APPLICATION = 'videocall.asgi.application'
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
